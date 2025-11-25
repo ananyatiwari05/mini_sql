@@ -134,7 +134,7 @@ std::string Database::executeQuery(const std::string& query) {
     std::stringstream result;
 
     switch (parsedQuery.type) {
-        case ParsedQuery::QueryType::CREATE_TABLE: {
+        case QueryType::CREATE_TABLE: {
             if (createTable(parsedQuery.tableName, parsedQuery.columns)) {
                 result << Colors::BRIGHT_GREEN << "✓" << Colors::RESET << " Table '"
                        << Colors::BRIGHT_YELLOW << parsedQuery.tableName << Colors::RESET
@@ -146,7 +146,7 @@ std::string Database::executeQuery(const std::string& query) {
             break;
         }
 
-        case ParsedQuery::QueryType::INSERT: {
+        case QueryType::INSERT: {
             if (insert(parsedQuery.tableName, parsedQuery.values)) {
                 result << Colors::BRIGHT_GREEN << "✓" << Colors::RESET << " Record inserted successfully.";
             } else {
@@ -156,7 +156,7 @@ std::string Database::executeQuery(const std::string& query) {
             break;
         }
 
-        case ParsedQuery::QueryType::SELECT: {
+        case QueryType::SELECT: {
             std::vector<Record> records;
             if (parsedQuery.selectAll) {
                 parsedQuery.columns.push_back("*");
@@ -214,7 +214,7 @@ std::string Database::executeQuery(const std::string& query) {
             break;
         }
 
-        case ParsedQuery::QueryType::DELETE: {
+        case QueryType::DELETE: {
             if (!parsedQuery.conditions.empty()) {
                 if (deleteRecords(parsedQuery.tableName, parsedQuery.conditions[0])) {
                     result << Colors::BRIGHT_GREEN << "✓" << Colors::RESET << " Records deleted successfully.";

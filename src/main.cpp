@@ -12,8 +12,8 @@ void displayHeader() {
     std::cout << "\n";
     std::cout << Colors::BRIGHT_CYAN << "+-----+-----+-----+-----+-----+-----+-----+-----+" << Colors::RESET << "\n";
     std::cout << Colors::BRIGHT_CYAN << "|" << Colors::RESET 
-              << Colors::BOLD << Colors::BRIGHT_YELLOW << "     MiniSQL Database Engine v1.0     " << Colors::RESET 
-              << Colors::BRIGHT_CYAN << "|" << Colors::RESET << "\n";
+              << Colors::BOLD << Colors::BRIGHT_YELLOW << "         MiniSQL Database         " << Colors::RESET 
+              << Colors::BRIGHT_CYAN << "       |" << Colors::RESET << "\n";
     std::cout << Colors::BRIGHT_CYAN << "+-----+-----+-----+-----+-----+-----+-----+-----+" << Colors::RESET << "\n\n";
 }
 

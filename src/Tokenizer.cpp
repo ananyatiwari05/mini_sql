@@ -1,13 +1,15 @@
 #include "Tokenizer.h"
-#include "Utils.h"
 #include <cctype>
-#include <iostream>
+#include <algorithm>
 
-Tokenizer::Tokenizer(const std::string& sql)
-    : input(sql), position(0) {}
+Tokenizer::Tokenizer(const std::string& sql) : input(sql), position(0) {}
 
 bool Tokenizer::isWhitespace(char c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+}
+
+bool Tokenizer::isOperator(char c) {
+    return c == '=' || c == '>' || c == '<' || c == '!' || c == '+' || c == '-' || c == '*' || c == '/';
 }
 
 bool Tokenizer::isLetter(char c) {
@@ -18,114 +20,102 @@ bool Tokenizer::isDigit(char c) {
     return std::isdigit(c);
 }
 
-bool Tokenizer::isOperator(char c) {
-    return c == '=' || c == '>' || c == '<' || c == '!';
-}
-
 Token Tokenizer::readString() {
-    // Consume opening quote
-    position++;
-    std::string result;
-    while (position < input.length() && input[position] != '"' && input[position] != '\'') {
-        result += input[position];
+    char quote = input[position++];
+    std::string value;
+    while (position < input.length() && input[position] != quote) {
+        value += input[position++];
+    }
+    if (position < input.length() && input[position] == quote) {
         position++;
     }
-    // Consume closing quote if present
-    if (position < input.length()) {
-        position++;
-    }
-    return Token(TokenType::STRING, result);
+    return Token(TokenType::STRING, value);
 }
 
 Token Tokenizer::readNumber() {
-    std::string result;
-    while (position < input.length() && isDigit(input[position])) {
-        result += input[position];
-        position++;
+    std::string value;
+    while (position < input.length() && (isDigit(input[position]) || input[position] == '.')) {
+        value += input[position++];
     }
-    return Token(TokenType::NUMBER, result);
+    return Token(TokenType::NUMBER, value);
 }
 
 Token Tokenizer::readIdentifierOrKeyword() {
-    std::string result;
+    std::string value;
     while (position < input.length() && (isLetter(input[position]) || isDigit(input[position]))) {
-        result += input[position];
-        position++;
+        value += input[position++];
     }
-    std::string lower = Utils::toLower(result);
-    if (isKeyword(lower)) {
-        return Token(TokenType::KEYWORD, lower);
+    
+    if (isKeyword(value)) {
+        return Token(TokenType::KEYWORD, value);
     }
-    return Token(TokenType::IDENTIFIER, result);
+    return Token(TokenType::IDENTIFIER, value);
+}
+
+bool Tokenizer::isKeyword(const std::string& word) {
+    std::string lower = word;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    
+    static const std::vector<std::string> keywords = {
+        "select", "insert", "create", "delete", "from", "where", "table", 
+        "values", "and", "or", "int", "text", "show", "tables", "into",
+        "drop", "alter", "update", "use", "database", "add", "modify", "set",
+        "databases"
+    };
+    
+    return std::find(keywords.begin(), keywords.end(), lower) != keywords.end();
 }
 
 std::vector<Token> Tokenizer::tokenize() {
     std::vector<Token> tokens;
-
+    
     while (position < input.length()) {
-        char current = input[position];
-
         // Skip whitespace
-        if (isWhitespace(current)) {
+        if (isWhitespace(input[position])) {
             position++;
             continue;
         }
-
-        // String literals
-        if (current == '"' || current == '\'') {
+        
+        // Handle quoted strings
+        if (input[position] == '"' || input[position] == '\'') {
             tokens.push_back(readString());
             continue;
         }
-
-        // Numbers
-        if (isDigit(current)) {
+        
+        // Handle punctuation
+        if (input[position] == '(' || input[position] == ')' || input[position] == ',' || input[position] == ';') {
+            std::string value(1, input[position++]);
+            tokens.push_back(Token(TokenType::PUNCTUATION, value));
+            continue;
+        }
+        
+        // Handle operators
+        if (isOperator(input[position])) {
+            std::string value(1, input[position++]);
+            if ((value == "=" || value == "!" || value == "<" || value == ">") && 
+                position < input.length() && input[position] == '=') {
+                value += input[position++];
+            }
+            tokens.push_back(Token(TokenType::OPERATOR, value));
+            continue;
+        }
+        
+        // Handle numbers
+        if (isDigit(input[position])) {
             tokens.push_back(readNumber());
             continue;
         }
-
-        // Identifiers and keywords
-        if (isLetter(current)) {
+        
+        // Handle identifiers and keywords
+        if (isLetter(input[position])) {
             tokens.push_back(readIdentifierOrKeyword());
             continue;
         }
-
-        // Operators
-        if (isOperator(current)) {
-            std::string op;
-            op += current;
-            position++;
-            // Handle multi-character operators like == and !=
-            if ((current == '=' || current == '!' || current == '>' || current == '<') &&
-                position < input.length() && input[position] == '=') {
-                op += input[position];
-                position++;
-            }
-            tokens.push_back(Token(TokenType::OPERATOR, op));
-            continue;
-        }
-
-        // Punctuation
-        if (current == '(' || current == ')' || current == ',' || current == ';') {
-            tokens.push_back(Token(TokenType::PUNCTUATION, std::string(1, current)));
-            position++;
-            continue;
-        }
-
-        // Unknown character
+        
+        // Unknown character, skip
         position++;
     }
-
+    
     tokens.push_back(Token(TokenType::END_OF_INPUT, ""));
     return tokens;
-}
-
-bool Tokenizer::isKeyword(const std::string& word) {
-    static const std::vector<std::string> keywords = {
-        "select", "insert", "create", "delete", "from", "into", "values",
-        "table", "where", "and", "or", "not"
-    };
-    for (const auto& keyword : keywords) {
-        if (word == keyword) return true;
-    }
-    return false;
 }

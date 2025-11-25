@@ -10,11 +10,11 @@ private:
     std::string input;
     size_t position;
 
-    // Helper functions for tokenization
     bool isWhitespace(char c);
     bool isLetter(char c);
     bool isDigit(char c);
     bool isOperator(char c);
+
     Token readString();
     Token readNumber();
     Token readIdentifierOrKeyword();
@@ -22,10 +22,8 @@ private:
 public:
     Tokenizer(const std::string& sql);
 
-    // Main tokenization method
     std::vector<Token> tokenize();
 
-    // Check if a keyword is recognized
     static bool isKeyword(const std::string& word);
 };
 
