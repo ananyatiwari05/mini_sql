@@ -4,10 +4,10 @@
 #include "Token.h"
 #include <string>
 #include <vector>
-
+using namespace std;
 class Tokenizer {
 private:
-    std::string input;
+    string input;
     size_t position;
 
     bool isWhitespace(char c);
@@ -20,11 +20,11 @@ private:
     Token readIdentifierOrKeyword();
 
 public:
-    Tokenizer(const std::string& sql);
+    Tokenizer(const string& sql);
 
-    std::vector<Token> tokenize();
+    vector<Token> tokenize();
 
-    static bool isKeyword(const std::string& word);
+    static bool isKeyword(const string& word);
 };
 
 #endif // TOKENIZER_H

@@ -2,8 +2,8 @@
 #include "Utils.h"
 #include "Table.h"
 #include <iostream>
-
-Parser::Parser(const std::vector<Token>& tokens) : tokens(tokens), position(0) {}
+using namespace std;
+Parser::Parser(const vector<Token>& tokens) : tokens(tokens), position(0) {}
 
 Token Parser::peek(int offset) const {
     size_t pos = position + offset;
@@ -28,7 +28,7 @@ bool Parser::match(TokenType type) {
     return false;
 }
 
-bool Parser::match(const std::string& value) {
+bool Parser::match(const string& value) {
     if (check(value)) {
         consume();
         return true;
@@ -40,7 +40,7 @@ bool Parser::check(TokenType type) const {
     return peek().type == type;
 }
 
-bool Parser::check(const std::string& value) const {
+bool Parser::check(const string& value) const {
     return Utils::toLower(peek().value) == Utils::toLower(value);
 }
 

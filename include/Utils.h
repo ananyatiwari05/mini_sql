@@ -3,18 +3,18 @@
 
 #include <string>
 #include <vector>
-
+using namespace std;
 class Utils {
 public:
     // String utilities
-    static std::string trim(const std::string& str);
-    static std::string toLower(const std::string& str);
-    static std::vector<std::string> split(const std::string& str, char delimiter);
-    static std::string join(const std::vector<std::string>& strings, const std::string& delimiter);
+    static string trim(const string& str);
+    static string toLower(const string& str);
+    static vector<string> split(const string& str, char delimiter);
+    static string join(const vector<string>& strings, const string& delimiter);
 
     // Validation
-    static bool isValidIdentifier(const std::string& name);
-    static bool isValidNumber(const std::string& str);
+    static bool isValidIdentifier(const string& name);
+    static bool isValidNumber(const string& str);
 };
 
 #endif // UTILS_H

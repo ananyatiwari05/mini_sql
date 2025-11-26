@@ -3,19 +3,19 @@
 
 #include <string>
 #include <vector>
-
+using namespace std;    
 class FileManager {
 public:
     // File operations
-    static bool fileExists(const std::string& filename);
-    static bool createDirectory(const std::string& dirname);
-    static std::vector<std::string> listFilesInDirectory(const std::string& dirname);
+    static bool fileExists(const string& filename);
+    static bool createDirectory(const string& dirname);
+    static vector<string> listFilesInDirectory(const string& dirname);
 
     // Read/Write operations
-    static std::string readFile(const std::string& filename);
-    static bool writeFile(const std::string& filename, const std::string& content);
-    static std::vector<std::string> readLines(const std::string& filename);
-    static bool writeLines(const std::string& filename, const std::vector<std::string>& lines);
+    static string readFile(const string& filename);
+    static bool writeFile(const string& filename, const string& content);
+    static vector<string> readLines(const string& filename);
+    static bool writeLines(const string& filename, const vector<string>& lines);
 };
 
 #endif // FILE_MANAGER_H

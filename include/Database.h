@@ -6,35 +6,33 @@
 #include <string>
 #include <unordered_map>
 #include <memory>
-
+using namespace std;
 // Main Database class
 class Database {
 private:
-    std::unordered_map<std::string, std::shared_ptr<Table>> tables;
-    std::string dataDirectory;
+    unordered_map<string, shared_ptr<Table>> tables;
+    string dataDirectory;
 
     // Helper methods
     void loadTablesFromDisk();
-    std::string getTableFilePath(const std::string& tableName) const;
-
+    string getTableFilePath(const string& tableName) const;
 public:
-    Database(const std::string& dataDir = "data");
+    Database(const string& dataDir = "data");
 
     // Database operations
-    bool createTable(const std::string& tableName, const std::vector<std::string>& columns);
-    bool dropTable(const std::string& tableName); // Added missing dropTable declaration
-    bool insert(const std::string& tableName, const std::vector<std::string>& values);
-    std::vector<Record> select(const std::string& tableName, const std::vector<std::string>& columns,
+    bool createTable(const string& tableName, const vector<string>& columns);
+    bool dropTable(const string& tableName); // Added missing dropTable declaration
+    bool insert(const string& tableName, const vector<string>& values);
+    vector<Record> select(const string& tableName, const vector<string>& columns,
                                const Condition* condition = nullptr);
-    bool deleteRecords(const std::string& tableName, const Condition& condition);
-    bool updateRecords(const std::string& tableName, const std::vector<UpdateAssignment>& assignments, const Condition& condition); // Added missing updateRecords declaration
+    bool deleteRecords(const string& tableName, const Condition& condition);
+    bool updateRecords(const string& tableName, const vector<UpdateAssignment>& assignments, const Condition& condition); // Added missing updateRecords declaration
 
     // Query execution
-    std::string executeQuery(const std::string& query);
-
+    string executeQuery(const string& query);
     // Utility methods
-    bool tableExists(const std::string& tableName) const;
-    const std::vector<std::string>& getTableColumns(const std::string& tableName) const;
+    bool tableExists(const string& tableName) const;
+    const vector<string>& getTableColumns(const string& tableName) const;
 };
 
 #endif // DATABASE_H

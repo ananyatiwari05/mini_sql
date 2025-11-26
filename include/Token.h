@@ -3,7 +3,7 @@
 
 #include <string>
 #include <vector>
-
+using namespace std;
 // Token types for SQL parsing
 enum class TokenType {
     KEYWORD,      // SELECT, INSERT, CREATE, DELETE, WHERE, FROM, INTO, VALUES, TABLE
@@ -19,9 +19,9 @@ enum class TokenType {
 // Token structure
 struct Token {
     TokenType type;
-    std::string value;
+    string value;
 
-    Token(TokenType t = TokenType::UNKNOWN, std::string v = "")
+    Token(TokenType t = TokenType::UNKNOWN, string v = "")
         : type(t), value(v) {}
 };
 

@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include "Tokenizer.h"
-
+using namespace std;
 // Query types
 enum class QueryType {
     CREATE_TABLE,
@@ -24,8 +24,8 @@ enum class QueryType {
 
 // Update assignment
 struct UpdateAssignment {
-    std::string column;
-    std::string value;
+    string column;
+    string value;
 };
 
 // Forward declare Condition from Table.h
@@ -37,39 +37,39 @@ struct ParsedQuery {
     bool selectAll = false;
     
     // For CREATE TABLE / DROP TABLE / ALTER TABLE
-    std::string tableName;
-    std::vector<std::string> columns;
+    string tableName;
+    vector<string> columns;
     
     // For CREATE DATABASE / DROP DATABASE / USE DATABASE
-    std::string databaseName;
+    string databaseName;
     
     // For INSERT
-    std::vector<std::string> values;
+    vector<string> values;
     
     // For SELECT
-    std::vector<std::string> selectColumns;
-    std::vector<Condition> conditions;
+    vector<string> selectColumns;
+    vector<Condition> conditions;
     
     // For UPDATE
-    std::vector<UpdateAssignment> assignments;
+    vector<UpdateAssignment> assignments;
     
     // For ALTER TABLE
-    std::string alterType; // ADD, DROP, MODIFY
-    std::string newColumnName;
-    std::string newColumnType;
+    string alterType; // ADD, DROP, MODIFY
+    string newColumnName;
+    string newColumnType;
 };
 
 class Parser {
 private:
-    std::vector<Token> tokens;
+    vector<Token> tokens;
     size_t position;
     
     Token peek(int offset = 0) const;
     Token consume();
     bool match(TokenType type);
-    bool match(const std::string& value);
+    bool match(const string& value);
     bool check(TokenType type) const;
-    bool check(const std::string& value) const;
+    bool check(const string& value) const;
     
     ParsedQuery parseCreateTable();
     ParsedQuery parseCreateDatabase();
@@ -84,7 +84,7 @@ private:
     Condition parseCondition();
     
 public:
-    Parser(const std::vector<Token>& tokens);
+    Parser(const vector<Token>& tokens);
     ParsedQuery parse();
 };
 
