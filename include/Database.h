@@ -22,10 +22,12 @@ public:
 
     // Database operations
     bool createTable(const std::string& tableName, const std::vector<std::string>& columns);
+    bool dropTable(const std::string& tableName); // Added missing dropTable declaration
     bool insert(const std::string& tableName, const std::vector<std::string>& values);
     std::vector<Record> select(const std::string& tableName, const std::vector<std::string>& columns,
                                const Condition* condition = nullptr);
     bool deleteRecords(const std::string& tableName, const Condition& condition);
+    bool updateRecords(const std::string& tableName, const std::vector<UpdateAssignment>& assignments, const Condition& condition); // Added missing updateRecords declaration
 
     // Query execution
     std::string executeQuery(const std::string& query);

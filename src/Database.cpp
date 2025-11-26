@@ -39,6 +39,18 @@ bool Database::createTable(const std::string& tableName, const std::vector<std::
     return table->saveToFile(getTableFilePath(tableName));
 }
 
+bool Database::dropTable(const std::string& tableName) {
+    if (tables.find(tableName) == tables.end()) {
+        return false; // Table doesn't exist
+    }
+
+    tables.erase(tableName);
+    
+    // Delete the file
+    std::string filepath = getTableFilePath(tableName);
+    return remove(filepath.c_str()) == 0;
+}
+
 bool Database::insert(const std::string& tableName, const std::vector<std::string>& values) {
     if (tables.find(tableName) == tables.end()) {
         return false; // Table doesn't exist
@@ -117,6 +129,30 @@ bool Database::deleteRecords(const std::string& tableName, const Condition& cond
     return table->saveToFile(getTableFilePath(tableName));
 }
 
+bool Database::updateRecords(const std::string& tableName, const std::vector<UpdateAssignment>& assignments, const Condition& condition) {
+    if (tables.find(tableName) == tables.end()) {
+        return false; // Table doesn't exist
+    }
+
+    std::shared_ptr<Table> table = tables[tableName];
+    std::vector<Record>& rows = const_cast<std::vector<Record>&>(table->getRows());
+
+    // Update matching records
+    for (auto& record : rows) {
+        if (table->evaluateCondition(record, condition)) {
+            for (const auto& assignment : assignments) {
+                int colIndex = table->getColumnIndex(assignment.column);
+                if (colIndex >= 0 && colIndex < (int)record.getSize()) {
+                    record.getValue(colIndex) = assignment.value;
+                }
+            }
+        }
+    }
+
+    // Save to file
+    return table->saveToFile(getTableFilePath(tableName));
+}
+
 std::string Database::executeQuery(const std::string& query) {
     std::string trimmedQuery = Utils::trim(query);
     if (trimmedQuery.empty()) {
@@ -146,6 +182,18 @@ std::string Database::executeQuery(const std::string& query) {
             break;
         }
 
+        case QueryType::DROP_TABLE: {
+            if (dropTable(parsedQuery.tableName)) {
+                result << Colors::BRIGHT_GREEN << "✓" << Colors::RESET << " Table '"
+                       << Colors::BRIGHT_YELLOW << parsedQuery.tableName << Colors::RESET
+                       << "' dropped successfully.";
+            } else {
+                result << Colors::BRIGHT_RED << "✗" << Colors::RESET << " Error: Could not drop table '"
+                       << Colors::BRIGHT_RED << parsedQuery.tableName << Colors::RESET << "'.";
+            }
+            break;
+        }
+
         case QueryType::INSERT: {
             if (insert(parsedQuery.tableName, parsedQuery.values)) {
                 result << Colors::BRIGHT_GREEN << "✓" << Colors::RESET << " Record inserted successfully.";
@@ -159,17 +207,17 @@ std::string Database::executeQuery(const std::string& query) {
         case QueryType::SELECT: {
             std::vector<Record> records;
             if (parsedQuery.selectAll) {
-                parsedQuery.columns.push_back("*");
+                parsedQuery.selectColumns.push_back("*");
             }
 
             Condition* condition = parsedQuery.conditions.empty() ? nullptr : &parsedQuery.conditions[0];
-            records = select(parsedQuery.tableName, parsedQuery.columns, condition);
+            records = select(parsedQuery.tableName, parsedQuery.selectColumns, condition);
 
             if (!tableExists(parsedQuery.tableName)) {
                 result << Colors::BRIGHT_RED << "✗" << Colors::RESET << " Error: Table '"
                        << Colors::BRIGHT_RED << parsedQuery.tableName << Colors::RESET << "' does not exist.";
             } else {
-                const auto& columns = parsedQuery.selectAll ? getTableColumns(parsedQuery.tableName) : parsedQuery.columns;
+                const auto& columns = parsedQuery.selectAll ? getTableColumns(parsedQuery.tableName) : parsedQuery.selectColumns;
                 
                 result << "\n" << Colors::BRIGHT_CYAN << "+" << std::string(70, '-') << "+" << Colors::RESET << "\n";
                 
@@ -223,6 +271,19 @@ std::string Database::executeQuery(const std::string& query) {
                 }
             } else {
                 result << Colors::BRIGHT_RED << "✗" << Colors::RESET << " Error: DELETE requires a WHERE clause.";
+            }
+            break;
+        }
+
+        case QueryType::UPDATE: {
+            if (!parsedQuery.conditions.empty() && !parsedQuery.assignments.empty()) {
+                if (updateRecords(parsedQuery.tableName, parsedQuery.assignments, parsedQuery.conditions[0])) {
+                    result << Colors::BRIGHT_GREEN << "✓" << Colors::RESET << " Records updated successfully.";
+                } else {
+                    result << Colors::BRIGHT_RED << "✗" << Colors::RESET << " Error: Could not update records.";
+                }
+            } else {
+                result << Colors::BRIGHT_RED << "✗" << Colors::RESET << " Error: UPDATE requires SET and WHERE clauses.";
             }
             break;
         }
