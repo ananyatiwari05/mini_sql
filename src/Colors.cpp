@@ -19,6 +19,7 @@ const string Colors::BRIGHT_MAGENTA = "\033[95m";
 
 const string Colors::BG_DARK_GRAY = "\033[100m";
 const string Colors::BG_BLUE = "\033[44m";
+
 string Colors::success(const string& text) {
     return BRIGHT_GREEN + text + RESET;
 }

@@ -1,15 +1,16 @@
+// Tokenizer.cpp (replace your current file with this)
 #include "Tokenizer.h"
+#include "Utils.h"
 #include <cctype>
-#include <algorithm>
+#include <iostream>
 using namespace std;
-Tokenizer::Tokenizer(const string& sql) : input(sql), position(0) {}
+
+
+Tokenizer::Tokenizer(const string& sql)
+    : input(sql), position(0) {}
 
 bool Tokenizer::isWhitespace(char c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r';
-}
-
-bool Tokenizer::isOperator(char c) {
-    return c == '=' || c == '>' || c == '<' || c == '!' || c == '+' || c == '-' || c == '*' || c == '/';
 }
 
 bool Tokenizer::isLetter(char c) {
@@ -20,102 +21,118 @@ bool Tokenizer::isDigit(char c) {
     return isdigit(c);
 }
 
+bool Tokenizer::isOperator(char c) {
+    return c == '=' || c == '>' || c == '<' || c == '!';
+}
+
 Token Tokenizer::readString() {
-    char quote = input[position++];
-    string value;
+    // current char is starting quote ( ' or " )
+    char quote = input[position];
+    position++;
+    string result;
     while (position < input.length() && input[position] != quote) {
-        value += input[position++];
-    }
-    if (position < input.length() && input[position] == quote) {
+        result += input[position];
         position++;
     }
-    return Token(TokenType::STRING, value);
+    if (position < input.length()) {
+        position++; // consume closing quote
+    }
+    return Token(TokenType::STRING, result);
 }
 
 Token Tokenizer::readNumber() {
-    string value;
-    while (position < input.length() && (isDigit(input[position]) || input[position] == '.')) {
-        value += input[position++];
+    string result;
+    while (position < input.length() && (isDigit(input[position]) || input[position]=='.')) {
+        result += input[position];
+        position++;
     }
-    return Token(TokenType::NUMBER, value);
+    return Token(TokenType::NUMBER, result);
 }
 
 Token Tokenizer::readIdentifierOrKeyword() {
-    string value;
+    string result;
     while (position < input.length() && (isLetter(input[position]) || isDigit(input[position]))) {
-        value += input[position++];
+        result += input[position];
+        position++;
     }
-    
-    if (isKeyword(value)) {
-        return Token(TokenType::KEYWORD, value);
+    string lower = Utils::toLower(result);
+    if (isKeyword(lower)) {
+        return Token(TokenType::KEYWORD, lower);
     }
-    return Token(TokenType::IDENTIFIER, value);
-}
-
-bool Tokenizer::isKeyword(const string& word) {
-    string lower = word;
-    transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-    
-    static const vector<string> keywords = {
-        "select", "insert", "create", "delete", "from", "where", "table", 
-        "values", "and", "or", "int", "text", "show", "tables", "into",
-        "drop", "alter", "update", "use", "database", "add", "modify", "set",
-        "databases"
-    };
-    
-    return find(keywords.begin(), keywords.end(), lower) != keywords.end();
+    return Token(TokenType::IDENTIFIER, Utils::toLower(result)); // normalize identifiers to lower (optional)
 }
 
 vector<Token> Tokenizer::tokenize() {
     vector<Token> tokens;
-    
+
     while (position < input.length()) {
-        // Skip whitespace
-        if (isWhitespace(input[position])) {
+        char current = input[position];
+
+        if (isWhitespace(current)) {
             position++;
             continue;
         }
-        
-        // Handle quoted strings
-        if (input[position] == '"' || input[position] == '\'') {
+
+        if (current == '"' || current == '\'') {
             tokens.push_back(readString());
             continue;
         }
-        
-        // Handle punctuation
-        if (input[position] == '(' || input[position] == ')' || input[position] == ',' || input[position] == ';') {
-            string value(1, input[position++]);
-            tokens.push_back(Token(TokenType::PUNCTUATION, value));
-            continue;
-        }
-        
-        // Handle operators
-        if (isOperator(input[position])) {
-            string value(1, input[position++]);
-            if ((value == "=" || value == "!" || value == "<" || value == ">") && 
-                position < input.length() && input[position] == '=') {
-                value += input[position++];
-            }
-            tokens.push_back(Token(TokenType::OPERATOR, value));
-            continue;
-        }
-        
-        // Handle numbers
-        if (isDigit(input[position])) {
+
+        if (isDigit(current)) {
             tokens.push_back(readNumber());
             continue;
         }
-        
-        // Handle identifiers and keywords
-        if (isLetter(input[position])) {
+
+        if (isLetter(current)) {
             tokens.push_back(readIdentifierOrKeyword());
             continue;
         }
-        
-        // Unknown character, skip
+
+        if (isOperator(current)) {
+            string op;
+            op += current;
+            position++;
+            if ((current == '=' || current == '!' || current == '>' || current == '<') &&
+                position < input.length() && input[position] == '=') {
+                op += input[position];
+                position++;
+            }
+            tokens.push_back(Token(TokenType::OPERATOR, op));
+            continue;
+        }
+
+        if (current == '(' || current == ')' || current == ',' || current == ';' || current == '*') {
+            tokens.push_back(Token(TokenType::PUNCTUATION, string(1, current)));
+            position++;
+            continue;
+        }
+
+        // unknown char -> skip
         position++;
     }
-    
+
     tokens.push_back(Token(TokenType::END_OF_INPUT, ""));
     return tokens;
+}
+
+bool Tokenizer::isKeyword(const string& word) {
+    static const vector<string> keywords = {
+        // DDL / DML / CONTROL
+        "select", "insert", "create", "delete", "update",
+        "database", "table", "use", "drop", "alter",
+
+        // clauses / values
+        "from", "into", "values", "set", "where",
+        "and", "or", "not",
+
+        // ordering / grouping
+        "order", "by", "group", "desc", "asc",
+
+        // alter helpers
+        "add", "drop", "modify"
+    };
+    for (const auto& keyword : keywords) {
+        if (word == keyword) return true;
+    }
+    return false;
 }

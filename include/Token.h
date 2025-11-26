@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 using namespace std;
+
 // Token types for SQL parsing
 enum class TokenType {
     KEYWORD,      // SELECT, INSERT, CREATE, DELETE, WHERE, FROM, INTO, VALUES, TABLE

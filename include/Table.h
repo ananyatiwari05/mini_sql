@@ -2,61 +2,57 @@
 #define TABLE_H
 
 #include "Record.h"
-#include "AVLTree.h"
+#include "Utils.h"
 #include "BPlusTree.h"
-#include <vector>
 #include <string>
-#include <map>
+#include <vector>
+#include <memory>
+using namespace std;
 
 struct Condition {
-    std::string columnName;
-    std::string op;
-    std::string value;
-};
-
-struct UpdateAssignment {
-    std::string column;
-    std::string value;
+    string columnName;
+    string op;
+    string value;
 };
 
 class Table {
 private:
-    std::string tableName;
-    std::vector<std::string> columns;
-    std::vector<Record> rows;
+    string tableName;
+    vector<string> columns;
+    vector<Record> rows;
+    unique_ptr<BPlusTree> primaryIndex;
+    string primaryKeyColumn;
 
-    // AVL Tree for exact match lookups on any column
-    std::map<std::string, AVLTree<std::string, size_t>> avlIndices; // column -> (value -> row index)
-    
-    // B+ Tree for range queries on numeric columns
-    std::map<std::string, BPlusTree<double, size_t>> bplusIndices; // column -> (numeric value -> row index)
-
-    double toNumber(const std::string& val) const;
-    bool evaluateCondition(const Record& record, const Condition& condition) const;
-    void buildIndices(); // Rebuild all indices after data changes
+    int getColumnIndex(const string& columnName) const;
+    double toNumber(const string& val) const;
 
 public:
-    Table(const std::string& name, const std::vector<std::string>& cols);
+    Table(const string& name, 
+          const vector<string>& cols, 
+          const string& primaryKey = "");
 
-    const std::string& getTableName() const;
-    const std::vector<std::string>& getColumns() const;
-    const std::vector<Record>& getRows() const;
-    std::vector<Record>& getRows();
+    // Getters
+    const string& getTableName() const;
+    const vector<string>& getColumns() const;
 
-    int getColumnIndex(const std::string& columnName) const;
+    const vector<Record>& getRows() const;  // const getter
+    vector<Record>& getRows();              // non-const getter
 
+    // Operations
     void insertRow(const Record& record);
     void deleteWhere(const Condition& condition);
+    vector<Record> selectWhere(const Condition& condition) const;
+    vector<Record> selectAll() const;
 
-    std::vector<Record> selectWhereExactMatch(const std::string& columnName, const std::string& value) const;
-    
-    std::vector<Record> selectWhereRange(const std::string& columnName, const std::string& op, double value) const;
-    
-    std::vector<Record> selectWhere(const Condition& condition) const;
-    std::vector<Record> selectAll() const;
+    vector<Record> selectOrderBy(const string& columnName, 
+                                      bool descending = false) const;
 
-    bool saveToFile(const std::string& filename) const;
-    static Table* loadFromFile(const std::string& filename);
+    vector<Record> selectGroupBy(const string& columnName) const;
+
+    bool evaluateCondition(const Record& record, const Condition& condition) const;
+
+    bool saveToFile(const string& filename) const;
+    static Table* loadFromFile(const string& filename);
 };
 
 #endif // TABLE_H

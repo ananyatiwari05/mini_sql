@@ -3,6 +3,7 @@
 
 #include <string>
 using namespace std;
+
 class Colors {
 public:
     // ANSI color codes for terminal output

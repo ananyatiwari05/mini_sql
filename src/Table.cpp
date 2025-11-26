@@ -1,69 +1,63 @@
+// src/Table.cpp
 #include "Table.h"
 #include "FileManager.h"
 #include "Utils.h"
+#include "AVLTree.h"
 #include <iostream>
 #include <algorithm>
+#include <memory>   // for make_unique (optional but explicit)
+using namespace std;
 
-Table::Table(const std::string& name, const std::vector<std::string>& cols)
-    : tableName(name), columns(cols) {}
+Table::Table(const string& name, const vector<string>& cols, const string& primaryKey)
+    : tableName(name), columns(cols), primaryKeyColumn(primaryKey) {
+    // create primary index (B+ tree) even if no primaryKey specified;
+    // the BPlusTree implementation can ignore inserts if primaryKey is empty.
+    primaryIndex = make_unique<BPlusTree>();
+}
 
-const std::string& Table::getTableName() const {
+const string& Table::getTableName() const {
     return tableName;
 }
 
-const std::vector<std::string>& Table::getColumns() const {
+const vector<string>& Table::getColumns() const {
     return columns;
 }
 
-const std::vector<Record>& Table::getRows() const {
+// const getter (declared in header)
+const vector<Record>& Table::getRows() const {
     return rows;
 }
 
-int Table::getColumnIndex(const std::string& columnName) const {
+// non-const getter (implementation was missing and caused linker errors)
+vector<Record>& Table::getRows() {
+    return rows;
+}
+
+int Table::getColumnIndex(const string& columnName) const {
     for (size_t i = 0; i < columns.size(); ++i) {
         if (Utils::toLower(columns[i]) == Utils::toLower(columnName)) {
-            return i;
+            return static_cast<int>(i);
         }
     }
     return -1;
 }
 
-double Table::toNumber(const std::string& val) const {
+double Table::toNumber(const string& val) const {
     try {
-        return std::stod(val);
+        return stod(val);
     } catch (...) {
         return 0.0;
     }
 }
 
-void Table::buildIndices() {
-    avlIndices.clear();
-    bplusIndices.clear();
-
-    for (size_t colIdx = 0; colIdx < columns.size(); ++colIdx) {
-        const std::string& colName = columns[colIdx];
-        avlIndices[colName] = AVLTree<std::string, size_t>();
-        bplusIndices[colName] = BPlusTree<double, size_t>();
-
-        for (size_t rowIdx = 0; rowIdx < rows.size(); ++rowIdx) {
-            std::string value = rows[rowIdx].getValue(colIdx);
-            // Add to AVL Tree for exact match
-            avlIndices[colName].insert(value, rowIdx);
-            // Add to B+ Tree for range queries
-            double numValue = toNumber(value);
-            bplusIndices[colName].insert(numValue, rowIdx);
-        }
-    }
-}
-
 bool Table::evaluateCondition(const Record& record, const Condition& condition) const {
     int colIndex = getColumnIndex(condition.columnName);
-    if (colIndex < 0 || colIndex >= (int)record.getSize()) {
+    if (colIndex < 0 || colIndex >= static_cast<int>(record.getSize())) {
         return false;
     }
 
-    std::string recordValue = record.getValue(colIndex);
-    std::string conditionValue = condition.value;
+    string recordValue = record.getValue(colIndex);
+    string conditionValue = condition.value;
 
     if (condition.op == "=" || condition.op == "==") {
         return recordValue == conditionValue;
@@ -81,158 +75,144 @@ bool Table::evaluateCondition(const Record& record, const Condition& condition) 
     return false;
 }
 
-std::vector<Record> Table::selectWhereExactMatch(const std::string& columnName, const std::string& value) const {
-    std::vector<Record> result;
-
-    auto avlIt = avlIndices.find(columnName);
-    if (avlIt == avlIndices.end()) {
-        return result;
-    }
-
-    size_t rowIdx;
-    if (const_cast<AVLTree<std::string, size_t>&>(avlIt->second).find(value, rowIdx)) {
-        result.push_back(rows[rowIdx]);
-    }
-
-    return result;
-}
-
-std::vector<Record> Table::selectWhereRange(const std::string& columnName, const std::string& op, double value) const {
-    std::vector<Record> result;
-
-    auto bplusIt = bplusIndices.find(columnName);
-    if (bplusIt == bplusIndices.end()) {
-        return result;
-    }
-
-    std::vector<size_t> indices;
-
-    if (op == ">") {
-        // Get all values greater than target
-        indices = const_cast<BPlusTree<double, size_t>&>(bplusIt->second).rangeQuery(value + 0.0001, 1e9);
-    } else if (op == "<") {
-        // Get all values less than target
-        indices = const_cast<BPlusTree<double, size_t>&>(bplusIt->second).rangeQuery(-1e9, value - 0.0001);
-    } else if (op == ">=") {
-        indices = const_cast<BPlusTree<double, size_t>&>(bplusIt->second).rangeQuery(value, 1e9);
-    } else if (op == "<=") {
-        indices = const_cast<BPlusTree<double, size_t>&>(bplusIt->second).rangeQuery(-1e9, value);
-    }
-
-    for (size_t idx : indices) {
-        if (idx < rows.size()) {
-            result.push_back(rows[idx]);
-        }
-    }
-
-    return result;
-}
-
-std::vector<Record> Table::selectWhere(const Condition& condition) const {
-    if (condition.op == "=" || condition.op == "==") {
-        // Use AVL Tree for exact match - O(log n)
-        return selectWhereExactMatch(condition.columnName, condition.value);
-    } else if (condition.op == ">" || condition.op == "<" || 
-               condition.op == ">=" || condition.op == "<=") {
-        // Use B+ Tree for range queries - O(log n + k)
-        return selectWhereRange(condition.columnName, condition.op, toNumber(condition.value));
-    } else if (condition.op == "!=") {
-        // Inequality: get all records and filter
-        std::vector<Record> result;
-        for (const auto& record : rows) {
-            if (evaluateCondition(record, condition)) {
-                result.push_back(record);
-            }
-        }
-        return result;
-    }
-
-    return std::vector<Record>();
-}
-
-std::vector<Record> Table::selectAll() const {
-    return rows;
-}
-
 void Table::insertRow(const Record& record) {
     rows.push_back(record);
-    size_t newRowIdx = rows.size() - 1;
-    
-    for (size_t colIdx = 0; colIdx < columns.size() && colIdx < record.getSize(); ++colIdx) {
-        std::string colName = columns[colIdx];
-        std::string value = record.getValue(colIdx);
-
-        if (avlIndices.find(colName) == avlIndices.end()) {
-            avlIndices[colName] = AVLTree<std::string, size_t>();
+    if (!primaryKeyColumn.empty() && record.getSize() > 0) {
+        int pkIndex = getColumnIndex(primaryKeyColumn);
+        if (pkIndex >= 0) {
+            // store pointer/row index in B+ tree leaf
+            primaryIndex->insert(record.getValue(pkIndex), static_cast<int>(rows.size() - 1));
         }
-        if (bplusIndices.find(colName) == bplusIndices.end()) {
-            bplusIndices[colName] = BPlusTree<double, size_t>();
-        }
-
-        avlIndices[colName].insert(value, newRowIdx);
-        bplusIndices[colName].insert(toNumber(value), newRowIdx);
     }
 }
 
 void Table::deleteWhere(const Condition& condition) {
+    // If you want the primaryIndex to remain consistent, you'd need to rebuild it
+    // after deletion (or update it on each deletion). For now, do a simple erase-by-condition.
     rows.erase(
-        std::remove_if(rows.begin(), rows.end(),
-                      [this, &condition](const Record& r) {
-                          return evaluateCondition(r, condition);
-                      }),
+        remove_if(rows.begin(), rows.end(),
+                       [this, &condition](const Record& r) {
+                           return evaluateCondition(r, condition);
+                       }),
         rows.end()
     );
-    buildIndices();
+
+    // NOTE: primaryIndex is not updated here. If you rely on the index after deletes,
+    // you should rebuild it (iterate rows and re-insert keys) or mark deleted entries in data pages.
 }
 
-bool Table::saveToFile(const std::string& filename) const {
-    std::vector<std::string> lines;
+vector<Record> Table::selectWhere(const Condition& condition) const {
+    vector<Record> result;
+    for (const auto& record : rows) {
+        if (evaluateCondition(record, condition)) {
+            result.push_back(record);
+        }
+    }
+    return result;
+}
 
-    // First line: column names
+vector<Record> Table::selectAll() const {
+    return rows;
+}
+
+vector<Record> Table::selectOrderBy(const string& columnName, bool descending) const {
+    int colIndex = getColumnIndex(columnName);
+    if (colIndex < 0) return rows;
+
+    AVLTree<string> avlTree;
+    vector<Record> result;
+
+    // Insert row indices keyed by the column value. If multiple rows share same key,
+    // the AVL implementation should handle duplicate keys (e.g., store a list).
+    for (size_t i = 0; i < rows.size(); ++i) {
+        avlTree.insert(rows[i].getValue(colIndex), to_string(static_cast<int>(i)));
+    }
+
+    auto sortedIndices = avlTree.getInOrder();
+    for (const auto& indexStr : sortedIndices) {
+        try {
+            int idx = stoi(indexStr);
+            if (idx >= 0 && static_cast<size_t>(idx) < rows.size()) {
+                result.push_back(rows[idx]);
+            }
+        } catch (...) {
+            // ignore parse errors
+        }
+    }
+
+    if (descending) {
+        reverse(result.begin(), result.end());
+    }
+
+    return result;
+}
+
+vector<Record> Table::selectGroupBy(const string& columnName) const {
+    int colIndex = getColumnIndex(columnName);
+    if (colIndex < 0) return {};
+
+    AVLTree<string> groupTree;
+    vector<Record> result;
+
+    // Build tree of unique keys
+    for (const auto& record : rows) {
+        string key = record.getValue(colIndex);
+        groupTree.insert(key, key); // value not important here - we just want keys unique and sorted
+    }
+
+    auto uniqueKeys = groupTree.getInOrder();
+    for (const auto& key : uniqueKeys) {
+        Record groupRecord;
+        groupRecord.addValue(key);
+        int count = 0;
+        for (const auto& record : rows) {
+            if (record.getValue(colIndex) == key) count++;
+        }
+        groupRecord.addValue(to_string(count));
+        result.push_back(groupRecord);
+    }
+
+    return result;
+}
+
+bool Table::saveToFile(const string& filename) const {
+    vector<string> lines;
     lines.push_back(Utils::join(columns, ","));
-
-    // Remaining lines: data rows
     for (const auto& record : rows) {
         lines.push_back(record.toCSV());
     }
-
     return FileManager::writeLines(filename, lines);
 }
 
-Table* Table::loadFromFile(const std::string& filename) {
+Table* Table::loadFromFile(const string& filename) {
     if (!FileManager::fileExists(filename)) {
         return nullptr;
     }
 
-    std::vector<std::string> lines = FileManager::readLines(filename);
+    vector<string> lines = FileManager::readLines(filename);
     if (lines.empty()) {
         return nullptr;
     }
 
-    // Extract table name from filename
-    std::string tableNameFromFile = filename;
+    string tableNameFromFile = filename;
     size_t lastSlash = tableNameFromFile.find_last_of("/\\");
-    if (lastSlash != std::string::npos) {
+    if (lastSlash != string::npos) {
         tableNameFromFile = tableNameFromFile.substr(lastSlash + 1);
     }
     size_t dotPos = tableNameFromFile.find_last_of(".");
-    if (dotPos != std::string::npos) {
+    if (dotPos != string::npos) {
         tableNameFromFile = tableNameFromFile.substr(0, dotPos);
     }
 
-    // Parse columns from first line
-    std::vector<std::string> columns = Utils::split(lines[0], ',');
-    Table* table = new Table(tableNameFromFile, columns);
+    vector<string> cols = Utils::split(lines[0], ',');
+    Table* table = new Table(tableNameFromFile, cols);
 
-    // Parse data rows
     for (size_t i = 1; i < lines.size(); ++i) {
         if (!lines[i].empty()) {
             Record record = Record::fromCSV(lines[i]);
             table->insertRow(record);
         }
     }
-
-    table->buildIndices();
 
     return table;
 }

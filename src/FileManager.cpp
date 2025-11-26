@@ -5,6 +5,7 @@
 #include <dirent.h>
 #include <iostream>
 using namespace std;
+
 bool FileManager::fileExists(const string& filename) {
     ifstream file(filename);
     return file.good();

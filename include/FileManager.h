@@ -3,7 +3,8 @@
 
 #include <string>
 #include <vector>
-using namespace std;    
+using namespace std;
+
 class FileManager {
 public:
     // File operations

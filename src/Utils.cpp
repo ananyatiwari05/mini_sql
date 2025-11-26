@@ -3,6 +3,7 @@
 #include <cctype>
 #include <sstream>
 using namespace std;
+
 string Utils::trim(const string& str) {
     size_t start = str.find_first_not_of(" \t\n\r");
     if (start == string::npos) return "";
