@@ -2,50 +2,61 @@
 #define TABLE_H
 
 #include "Record.h"
-#include "Utils.h"
-#include <string>
+#include "AVLTree.h"
+#include "BPlusTree.h"
 #include <vector>
-using namespace std;
-// Condition for WHERE clause
+#include <string>
+#include <map>
+
 struct Condition {
-    string columnName;
-    string op;  // "=", "==", ">", "<", ">=", "<=", "!="
-    string value;
+    std::string columnName;
+    std::string op;
+    std::string value;
 };
 
-// Represents a database table
+struct UpdateAssignment {
+    std::string column;
+    std::string value;
+};
+
 class Table {
 private:
-    string tableName;
-    vector<string> columns;
-    vector<Record> rows;
+    std::string tableName;
+    std::vector<std::string> columns;
+    std::vector<Record> rows;
 
-    // Helper to get column index
-    int getColumnIndex(const string& columnName) const;
+    // AVL Tree for exact match lookups on any column
+    std::map<std::string, AVLTree<std::string, size_t>> avlIndices; // column -> (value -> row index)
+    
+    // B+ Tree for range queries on numeric columns
+    std::map<std::string, BPlusTree<double, size_t>> bplusIndices; // column -> (numeric value -> row index)
 
-    // Helper to evaluate condition for a record
+    double toNumber(const std::string& val) const;
     bool evaluateCondition(const Record& record, const Condition& condition) const;
-
-    // Helper to convert value to number if possible
-    double toNumber(const string& val) const;
+    void buildIndices(); // Rebuild all indices after data changes
 
 public:
-    Table(const string& name, const vector<string>& cols);
+    Table(const std::string& name, const std::vector<std::string>& cols);
 
-    // Basic operations
-    const string& getTableName() const;
-    const vector<string>& getColumns() const;
-    const vector<Record>& getRows() const;
+    const std::string& getTableName() const;
+    const std::vector<std::string>& getColumns() const;
+    const std::vector<Record>& getRows() const;
+    std::vector<Record>& getRows();
 
-    // Data manipulation
+    int getColumnIndex(const std::string& columnName) const;
+
     void insertRow(const Record& record);
     void deleteWhere(const Condition& condition);
-    vector<Record> selectWhere(const Condition& condition) const;
-    vector<Record> selectAll() const;
 
-    // File operations
-    bool saveToFile(const string& filename) const;
-    static Table* loadFromFile(const string& filename);
+    std::vector<Record> selectWhereExactMatch(const std::string& columnName, const std::string& value) const;
+    
+    std::vector<Record> selectWhereRange(const std::string& columnName, const std::string& op, double value) const;
+    
+    std::vector<Record> selectWhere(const Condition& condition) const;
+    std::vector<Record> selectAll() const;
+
+    bool saveToFile(const std::string& filename) const;
+    static Table* loadFromFile(const std::string& filename);
 };
 
 #endif // TABLE_H

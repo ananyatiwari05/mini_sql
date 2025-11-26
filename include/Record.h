@@ -1,27 +1,27 @@
 #ifndef RECORD_H
 #define RECORD_H
 
-#include <string>
 #include <vector>
-#include "Utils.h"
-using namespace std;
-// Represents a single row/record in a table
+#include <string>
+
 class Record {
 private:
-    vector<string> values;
+    std::vector<std::string> values;
+
 public:
     Record();
-    Record(const vector<string>& vals);
+    Record(const std::vector<std::string>& vals);
 
-    // Getters and setters
-    void addValue(const string& value);
-    const string& getValue(size_t index) const;
-    string& getValue(size_t index);
+    void addValue(const std::string& value);
+    const std::string& getValue(size_t index) const;
+    std::string& getValue(size_t index);
+    
+    void setValue(size_t index, const std::string& value);
+    
     size_t getSize() const;
 
-    // Convert to/from CSV format
-    string toCSV() const;
-    static Record fromCSV(const string& line);
+    std::string toCSV() const;
+    static Record fromCSV(const std::string& line);
 };
 
 #endif // RECORD_H
